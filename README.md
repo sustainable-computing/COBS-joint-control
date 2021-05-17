@@ -1,10 +1,10 @@
 # On the Joint Control of Multiple Building Systems with Reinforcement Learning
 
-This repository contains the code for [On the Joint Control of Multiple Building Systems with Reinforcement Learning](https://doi.org/10.1145/3447555.3464855). Please cite our paper if you find this work is helpful:
+This repository contains the code for [On the Joint Control of Multiple Building Systems with Reinforcement Learning](https://doi.org/10.1145/3447555.3464855). Please cite our paper if you find this work helpful:
 ```
 Tianyu Zhang, Gaby Baasch, Omid Ardakanian, and Ralph Evins, "On the Joint Control of Multiple Building Systems with ReinforcementLearning", In Proceedings of the Twelfth ACM International Conference on Future EnergySystems (ACM e-Energy ’21), June 28–July 2, 2021
 ```
-```
+```Bibtex
 @inproceedings{10.1145/3447555.3464855,
     author = {Zhang, Tianyu and Baasch, Gaby and Ardakanian, Omid and Evins, Ralph},
     title = {On the Joint Control of Multiple Building Systems with Reinforcement Learning},
@@ -21,7 +21,7 @@ Tianyu Zhang, Gaby Baasch, Omid Ardakanian, and Ralph Evins, "On the Joint Contr
 ```
 
 ## Description
-This paper explores rule-based and RL-based joint control of the building systems for a 5-zone office building in Pittsburgh, Pennsylvania in January (heating season) and July (cooling season). The floor area of this building is 5,000 square feet. This [IDF](https://github.com/sustainable-computing/COBS-joint-control/blob/master/eplus_files/5Zone_Control_SAT_no_windowcontrol.idf) file describes the simulated building. The control setpoints that we adjust using different algorithms are supply air temperature setpoint and blind angle setpoint to maximize energy savings, thermal comfort, and visual comfort. The building is simulated in the [EnergyPlus](https://energyplus.net/) 9.3.0 environment and is controlled via the [COmprehensive Building Simulator (COBS)](https://github.com/sustainable-computing/COBS) which interacts with EnergyPlus. COBS is used in this work to programmatically execute rule-based control scenarios and to train the RL agents. The office building we control is depicted in the figure below.
+This paper explores rule-based and RL-based control of building subsystems (HVAC, lighting, shading) in a 5-zone office building in Pittsburgh, Pennsylvania in January (heating season) and July (cooling season). The floor area of this building is 5,000 square feet. The control setpoints that we adjust using different algorithms to maximize energy savings, thermal comfort, and visual comfort are supply air temperature setpoint and blind angle setpoint. This [IDF](https://github.com/sustainable-computing/COBS-joint-control/blob/master/eplus_files/5Zone_Control_SAT_no_windowcontrol.idf) file describes the simulated building. The building is simulated in the [EnergyPlus](https://energyplus.net/) 9.3.0 environment and is controlled via the [COmprehensive Building Simulator (COBS)](https://github.com/sustainable-computing/COBS) which interacts with EnergyPlus. COBS is used in this work to programmatically execute rule-based control scenarios and to train the RL agents. The office building we control is depicted in the figure below.
 
 ![Building layout](building_schematic.png)
 
@@ -29,10 +29,10 @@ This repository is licensed under [MIT](https://github.com/sustainable-computing
 Code is written by [Tianyu Zhang](https://github.com/skyu0221) and [Gaby Baasch](https://github.com/gbaasch).
 
 ## Contributing
-We welcome contributions to this work in many forms, such as bug reports, pull requests, etc.
+We welcome contributions to this work in different forms, such as bug reports, pull requests, etc.
 
 ## Prerequisites
-Please make sure to have [EnergyPlus](https://energyplus.net/) 9.3.0 installed on your computer. The code is not compatible with other version of the EnergyPlus. Please download the [COBS](https://github.com/sustainable-computing/COBS) and add its path to your python environment to run the code correctly.
+Make sure to have [EnergyPlus](https://energyplus.net/) 9.3.0 installed on your computer. The code is not compatible with other version of EnergyPlus. Download the [COBS](https://github.com/sustainable-computing/COBS) simulator and add its path to your python environment to run the code correctly.
 
 ## Dependencies
 
