@@ -1,0 +1,11 @@
+**/.DS_Store
+input.idf
+eplusout.bnd
+checkpoints/**
+rl_results/
+/.idea/*
+/result/*
+input.idf
+**/__pycache__/*
+**/.ipynb_checkpoints/*
+plot_results/results/*
