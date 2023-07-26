@@ -129,13 +129,17 @@ def setup(args):
     parser.add_argument('--load_sat', type=str, default='False', help='Set to False if train the SAT_SP together')
     parser.add_argument('--load_sat_path', type=str, default='./scratch/tzhang6/hvac_control/checkpoints',
                         help='Path of the pre-trained SAT_SP controller')
+    parser.add_argument('--no_train_split', type=int, default=400,
+                        help='Stop training after how many epochs')
 
     parser.add_argument('--vav', type=str, default='False', help='Replace Thermostat to VAV position')
+    parser.add_argument('--change_layout', type=str, default='False', help='Change the layout for evaluation')
 
     args = parser.parse_args(args)
     TESTING = str2bool(args.testing)
 
     chkpt_dir = args.chkpt_dir
+    no_train_split = args.no_train_split
     seed = args.seed
     agent_type = args.agent_type
     eplus_path = args.eplus_path
@@ -165,6 +169,7 @@ def setup(args):
     control_therm = str2bool(args.control_therm)
     load_sat_path = args.load_sat_path
     vav = str2bool(args.vav)
+    change_layout = str2bool(args.change_layout)
 
     RL_RESULTS_DIR = os.path.join(save_root, 'rl_results')
     CHCKPT_DIR = os.path.join(save_root, chkpt_dir)
@@ -194,27 +199,6 @@ def setup(args):
 
     if not control_sat and not control_therm:
         raise LookupError("You cannot disable both controls")
-
-    # if control_type == 'SAT_SP':
-    #     base_name = f'{control_type}_customOcc{customize_occupancy}_{agent_type}_{network_type}_{season}_' \
-    #                 f'blinds{blinds}Multi{control_blinds_multi}_dlighting{daylighting}'
-    #     if TESTING:
-    #         if zone_blinds_multi:
-    #             idf_path = 'test/eplus_files/5Zone_Control_SAT_no_windowcontrol.idf'
-    #         else:
-    #             idf_path = 'test/eplus_files/5Zone_Control_SAT.idf'
-    #     else:
-    #         if zone_blinds_multi:
-    #             idf_path = 'eplus_files/5Zone_Control_SAT_no_windowcontrol.idf'
-    #         else:
-    #             idf_path = 'eplus_files/5Zone_Control_SAT.idf'
-    # elif control_type == 'THERM_SP':
-    #     base_name = f'{control_type}_Multi{control_therm_multi}_customOcc{customize_occupancy}_' \
-    #                 f'{agent_type}_{network_type}_{season}_' \
-    #                 f'blinds{blinds}Multi{control_blinds_multi}_dlighting{daylighting}_multiAgent{multi_agent}'
-    #     idf_path = 'eplus_files/5Zone_Temp_Multi_no_windowcontrol_update.idf'
-    # else:
-    #     raise ValueError(f"{control_type} is not a valid control type.")
 
     # =============================
     # LOAD FORECASTED STATE
@@ -432,50 +416,6 @@ def setup(args):
             if not os.path.exists(os.path.join(chkpt_pth, f"Main_SAT")):
                 os.makedirs(os.path.join(chkpt_pth, f"Main_SAT"))
         agents.append(sat_agent)
-    print(len(agents))
-    # Set agent specific params
-    # if 'SAC' in agent_type:
-    #     agent_params['start_steps'] = start_steps
-    #     agent_params['alpha'] = alpha
-    #     agent_params['automatic_entropy_tuning'] = automatic_entropy_tuning
-    #     agent_params['n_state'] = num_inputs
-    #     network = sac_network_map[network_type]
-    #     if TESTING:
-    #         # Make the agent smaller so that the tests run faster
-    #         agent_params["hidden_size"] = 2
-    #         agent_params["replay_size"] = 200
-    #         agent_params["batch_size"] = 10
-    # elif 'DuelingDQN' in agent_type:
-    #     # Remove DQN and DDQN for now because they are not being used
-    #     agent_params['epsilon'] = epsilon
-    #     agent_params['input_dims'] = (num_inputs,)
-    #     network = branching_dueling_dqn_network_map[network_type]
-    # elif 'PPO' in agent_type:
-    #     # Set the number of actions depending on use case
-    #     network = ppo_network_map[network_type]
-    #     agent_params['n_state'] = num_inputs
-    # else:
-    #     raise ValueError(f'{agent_type} is not an acceptable agent_type')
-    #
-    # if multi_agent:
-    #     agent = []
-    #     for i in range(1, 6):
-    #         if i != 5:
-    #             if 'DuelingDQN' in agent_type:
-    #                 agent_params['input_dims'] = (num_inputs + 1,)
-    #             else:
-    #                 agent_params['n_state'] = num_inputs + 1
-    #         else:
-    #             agent_params["num_blind_actions"] = 0
-    #             if 'DuelingDQN' in agent_type:
-    #                 agent_params['input_dims'] = (num_inputs,)
-    #             else:
-    #                 agent_params['n_state'] = num_inputs
-    #         # print(f"Zone{i} {agent_params['n_state']}")
-    #         agent.append(agent_map[agent_type](agent_params, network, chkpt_dir=os.path.join(chkpt_dir, f"Zone{i}")))
-    # else:
-    #     # print(f"{agent_params['n_state']}")
-    #     agent = agent_map[agent_type](agent_params, network, chkpt_dir=chkpt_pth)
 
     # =============================
     # SETUP MODEL
@@ -552,7 +492,12 @@ def setup(args):
                                         "Hourly Value": 0})
 
     external_data = CsvImporter(forecasted_path, planstep=planning_steps)
-    forecast_state = external_data.get_output_states()  # TODO - think about scaling
+    forecast_state = list() # TODO - think about scaling
+    for state in external_data.get_output_states():
+        for temp in forecast_vars:
+            if temp in state:
+                forecast_state.append(state)
+                break
     ep_model.add_state_modifier(external_data)
 
     # =============================
@@ -598,7 +543,7 @@ def setup(args):
 
     # return ep_model, agent, forecast_state, agent_type, control_type, \
     return ep_model, agents, forecast_state, agent_type, \
-           (start_run, end_run, base_name, blinds, TESTING, multi_agent, season, control_sat, load_sat, vav)
+           (start_run, end_run, base_name, blinds, TESTING, multi_agent, season, control_sat, load_sat, vav, no_train_split, seed, change_layout)
 
 
 def run_episodic(ep_model, agent, args):
@@ -698,7 +643,7 @@ def save(run_dir, run_num, agents, observations, actions, TESTING, multi_agent, 
 
 def run_continuous(ep_model, agents, forecast_state, args):
     # print(len(agents))
-    start_run, end_run, base_name, blinds, TESTING, multi_agent, season, control_sat, load_sat, vav = args
+    start_run, end_run, base_name, blinds, TESTING, multi_agent, season, control_sat, load_sat, vav, no_train_split, seed, change_layout = args
     if not isinstance(agents, list):
         agents = [agents]
 
@@ -744,14 +689,48 @@ def run_continuous(ep_model, agents, forecast_state, args):
         blind_actions_list = []
         therm_actions_list = []
 
+        # if run_num == no_train_split:
+        #     OG(ep_model, random_seed=seed).generate_daily_schedule(add_to_model=True,
+        #                                                                         overwrite_dict={f"SPACE{i}-1": f"SPACE{i}-1 People 1" for i in range(1, 6)})
+        if change_layout and run_num == no_train_split:
+            ep_model.edit_configuration('Building', {'Name': 'Building'}, {
+                'North Axis': 120,
+                'Terrain': "Country"
+            })
+            ep_model.edit_configuration('Material', {'Name': 'WD01'}, {
+                'Thickness': "1E-02",
+                'Density': 300,
+                "Specific Heat": 1000,
+                "Thermal Absorptance": 0.7
+            })
+            ep_model.edit_configuration('Material', {'Name': 'PW03'}, {
+                'Thickness': "1E-02",
+                'Density': 350,
+                "Specific Heat": 1000,
+                "Thermal Absorptance": 0.7
+            })
+            ep_model.edit_configuration('Material', {'Name': 'IN02'}, {
+                'Thickness': "5E-02",
+                'Density': 5,
+                "Specific Heat": 500,
+                "Thermal Absorptance": 0.7
+            })
+            ep_model.edit_configuration('Material', {'Name': 'GP01'}, {
+                'Thickness': "1E-02",
+                'Density': 400,
+                "Specific Heat": 450,
+                "Thermal Absorptance": 0.7
+            })
+
         obs = ep_model.reset()
+
         # observations.append(obs)
 
         sat_actions = list()
         therm_actions = list()
         blind_actions = list()
         for i, agent in enumerate(agents):
-            if i == len(agents) - 1 and control_sat and load_sat:
+            if run_num >= no_train_split or (i == len(agents) - 1 and control_sat and load_sat):
                 state = torch.tensor(obs_to_state_values(obs, agent_state_name_list[i] + forecast_state)).double()
                 action = agent.inference_only((state, obs, 0))
             else:
@@ -801,18 +780,12 @@ def run_continuous(ep_model, agents, forecast_state, args):
 
             # print(env_actions)
             obs = ep_model.step(env_actions)
-
             # print(agents)
             for i in range(len(agents)):
                 # print("?")
                 if i == len(agents) - 1 and control_sat and load_sat:
                     continue
                 obs[f"reward agent {i + 1}"] = obs["reward"][i]
-
-                # Added for model-based model to print RMSE
-                if agents[i].type == 'BDQNwPlanningAgent':
-                    agents[i].get_world_rmse(obs)
-
             obs["total reward"] = sum(obs["reward"])
 
             observations.append(obs)
@@ -822,7 +795,7 @@ def run_continuous(ep_model, agents, forecast_state, args):
             therm_actions = list()
             blind_actions = list()
             for i, agent in enumerate(agents):
-                if i == len(agents) - 1 and control_sat and load_sat:
+                if run_num >= no_train_split or (i == len(agents) - 1 and control_sat and load_sat):
                     state = torch.tensor(obs_to_state_values(obs, agent_state_name_list[i] + forecast_state)).double()
                     feeding_state = (state, obs, obs["timestep"])
                     action = agent.inference_only(feeding_state)
